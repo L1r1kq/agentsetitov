@@ -1,5 +1,5 @@
 from agentse.medical_guard import critique_report, has_red_flag, is_health_fact, strip_diagnosis
-from agentse.report import compose_reference_report, is_blank_answer
+from agentse.report import compose_reference_report, is_blank_answer, looks_like_dump, select_cards
 
 
 def test_blocks_diagnosis_wording():
@@ -29,11 +29,13 @@ def test_negated_chest_is_not_red_flag():
 
 def test_blank_json_and_fallback_report():
     assert is_blank_answer("{}")
+    assert looks_like_dump("knowledge/INDEX.md knowledge/a knowledge/b knowledge/c")
+    assert select_cards("Температура 38.2 и сухой кашель, одышки нет") == ["fever_cough.md"]
     report = compose_reference_report(
-        "Температура 38.2 и сухой кашель, одышки нет, грудь не болит",
-        ["fever_cough.md: ОРВИ-подобные жалобы в справочнике"],
-        [{"text": "жар и кашель", "meta": {"file": "knowledge/fever_cough.md"}}],
+        "Температура 38.2 три дня и сухой кашель, одышки нет, грудь не болит"
     )
-    assert "не диагноз" in report.lower() or "справочн" in report.lower()
-    assert "fever_cough" in report
+    assert "не диагноз" in report.lower()
+    assert "abdominal" not in report
+    assert "Каталог справочника" not in report
+    assert "ОРВИ" in report
     assert "103" not in report
