@@ -6,11 +6,11 @@ ROUTER_CONTRACT = """Ответь ТОЛЬКО JSON без markdown:
 {"next":"planner"|"researcher"|"builder"|"critic"|"curator"|"FINISH","reason":"кратко"}
 Правила:
 - нет плана → planner
-- нужные факты/справки → researcher
-- нужен код/вычисление/артефакт → builder
-- есть черновик ответа → critic
-- critic approved и надо запомнить → curator
-- задача закрыта → FINISH
+- нет карточек/findings → researcher
+- нет отчёта → builder
+- есть черновик → critic
+- critic approved → curator
+- закрыто → FINISH
 """
 
 
@@ -28,42 +28,42 @@ def system_for(agent: str, extra: str = "") -> str:
 
 SUPERVISOR_PROMPT = system_for(
     "supervisor",
-    "Ты оркестратор. Не решай задачу сам. Только маршрутизируй.\n" + ROUTER_CONTRACT,
+    "Ты оркестратор MedInfo. Не пиши клинику. Только маршрутизируй.\n" + ROUTER_CONTRACT,
 )
 
 PLANNER_PROMPT = system_for(
     "planner",
-    "Разбей задачу на 3-6 проверяемых шагов. Ответ JSON: "
-    '{"plan":["шаг1","шаг2"],"need":["researcher"|"builder"],"assumptions":[]}',
+    "Разложи жалобу на поля и шаги конвейера. Не ставь диагноз. JSON: "
+    '{"plan":["шаг"],"symptoms":[],"unknowns":[],"red_flag_words":[]}',
 )
 
 RESEARCHER_PROMPT = system_for(
     "researcher",
-    "Собери факты из памяти и скиллов. Не выдумывай источники. "
-    'JSON: {"findings":["..."],"unknowns":["..."],"enough":true}',
+    "Опирайся только на выданные карточки knowledge/. Не выдумывай клинику. "
+    'JSON: {"findings":["файл: мысль"],"unknowns":["..."],"enough":true}',
 )
 
 BUILDER_PROMPT = system_for(
     "builder",
-    "Собери артефакт: ответ, формулу или код. Если нужен код — только безопасный Python "
-    "без import/os/сети, результат клади в переменную result. "
-    'JSON: {"artifact_type":"text"|"code"|"calc","content":"...","notes":"..."}',
+    "Собери справочный отчёт по скиллу report-writing. Это НЕ диагноз. "
+    "Запрещены фразы: «у вас», «диагноз:», «это точно», названия таблеток. "
+    'JSON: {"artifact_type":"text","content":"markdown отчёт","notes":"..."}',
 )
 
 CRITIC_PROMPT = system_for(
     "critic",
-    "Проверь ответ на галлюцинации, дыры в плане, небезопасность кода, пустые ссылки. "
+    "Revise если отчёт ставит диагноз, назначает лечение, молчит про красный флаг, "
+    "или не говорит что это не диагноз. "
     'JSON: {"verdict":"approve"|"revise","issues":[],"required_fix":"","score":0.0}',
 )
 
 CURATOR_PROMPT = system_for(
     "curator",
-    "Выдели 0-3 долговечных факта. Не пиши транскрипт. "
-    'JSON: {"facts":["..."],"entities":[{"name":"...","type":"..."}],'
-    '"relations":[{"src":"...","rel":"...","dst":"...","evidence":"..."}]}',
+    "Не сохраняй симптомы человека. 0 фактов — нормальный исход. "
+    'JSON: {"facts":[],"entities":[],"relations":[]}',
 )
 
 FINALIZER_PROMPT = (
-    "Собери финальный ответ пользователю на русском. Коротко, по делу, без театра. "
-    "Если critic нашёл дыры — честно скажи, что не закрыто."
+    "Верни пользователю markdown-отчёт на русском. Сохрани дисклеймер «не диагноз». "
+    "Не добавляй новых болезней. Если critic нашёл дыры — исправь формулировки, не ставь диагноз."
 )

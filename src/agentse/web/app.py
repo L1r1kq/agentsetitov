@@ -78,4 +78,6 @@ def identity() -> dict[str, str]:
     for name in ("SOUL.md", "IDENTITY.md", "AGENTS.md", "MEMORY.md"):
         path = settings.workspace / name
         files[name] = path.read_text(encoding="utf-8") if path.exists() else ""
+    purpose = settings.workspace / "PURPOSE.md"
+    files["PURPOSE.md"] = purpose.read_text(encoding="utf-8") if purpose.exists() else ""
     return files

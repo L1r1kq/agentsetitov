@@ -9,6 +9,7 @@ from langgraph.graph import END, START, StateGraph
 
 from agentse.agents.policy import merge_route
 from agentse.config import Settings, get_settings
+from agentse.medical_guard import critique_report, is_health_fact, strip_diagnosis
 from agentse.llm import LLMResult, OllamaClient, parse_json_object
 from agentse.observability.metrics import (
     AGENT_HANDOFFS,
@@ -83,8 +84,9 @@ class AgentRuntime:
 
     def planner(self, state: AgentState) -> dict[str, Any]:
         AGENT_STEPS.labels(agent="planner").inc()
+        self.tools.call("skill_load", name="symptom-intake")
         self.tools.call("skill_load", name="planning")
-        hits = self.tools.call("memory_search", query=state["task"], limit=4)
+        hits = self.tools.call("knowledge_search", query=state["task"], limit=4)
         result = self._ask(
             PLANNER_PROMPT,
             f"Задача: {state['task']}\nПамять: {json.dumps(hits, ensure_ascii=False)}",
@@ -98,12 +100,12 @@ class AgentRuntime:
 
     def researcher(self, state: AgentState) -> dict[str, Any]:
         AGENT_STEPS.labels(agent="researcher").inc()
-        skill = self.tools.call("skill_load", name="research")
-        hits = self.tools.call("memory_search", query=state["task"], limit=6)
+        skill = self.tools.call("skill_load", name="medical-reference")
+        hits = self.tools.call("knowledge_search", query=state["task"], limit=6)
         result = self._ask(
             RESEARCHER_PROMPT,
-            f"Задача: {state['task']}\nПлан: {state.get('plan')}\n"
-            f"Скилл:\n{skill[:1200]}\nПамять: {json.dumps(hits, ensure_ascii=False)}",
+            f"Жалоба: {state['task']}\nПлан: {state.get('plan')}\n"
+            f"Скилл:\n{skill[:1200]}\nКарточки: {json.dumps(hits, ensure_ascii=False)}",
         )
         data = self._safe_json(result)
         findings = data.get("findings") or [h["text"] for h in hits] or [result.text]
@@ -113,10 +115,10 @@ class AgentRuntime:
 
     def builder(self, state: AgentState) -> dict[str, Any]:
         AGENT_STEPS.labels(agent="builder").inc()
-        self.tools.call("skill_load", name="sandbox-code")
+        self.tools.call("skill_load", name="report-writing")
         result = self._ask(
             BUILDER_PROMPT,
-            f"Задача: {state['task']}\nПлан: {state.get('plan')}\nФакты: {state.get('findings')}\n"
+            f"Жалоба: {state['task']}\nПлан: {state.get('plan')}\nКарточки: {state.get('findings')}\n"
             f"Замечания критика: {state.get('critique')}",
         )
         data = self._safe_json(result)
@@ -151,9 +153,16 @@ class AgentRuntime:
         )
         data = self._safe_json(result)
         verdict = data.get("verdict") if data.get("verdict") in {"approve", "revise"} else "approve"
+        issues = [str(x) for x in (data.get("issues") or []) if x]
+        guard = critique_report(state.get("task") or "", str(last.get("content") or ""))
+        issues.extend(guard)
         if last.get("sandbox") and last["sandbox"].get("ok") is False:
+            guard.append("sandbox failed")
+            issues.append("sandbox failed")
+        if guard:
             verdict = "revise"
-            data.setdefault("issues", []).append("sandbox failed")
+            data["required_fix"] = data.get("required_fix") or guard[0]
+        data["issues"] = issues
         score = float(data.get("score") or (0.8 if verdict == "approve" else 0.4))
         CRITIC_VERDICTS.labels(verdict=verdict).inc()
         critique = {
@@ -175,6 +184,8 @@ class AgentRuntime:
         data = self._safe_json(result)
         session_id = state.get("session_id", "default")
         for fact in data.get("facts") or []:
+            if is_health_fact(str(fact)):
+                continue
             self.tools.call("memory_write", fact=str(fact), session_id=session_id, kind="fact")
         for ent in data.get("entities") or []:
             if isinstance(ent, dict) and ent.get("name"):
@@ -198,9 +209,9 @@ class AgentRuntime:
                 f"Критика: {state.get('critique')}",
                 fmt_json=False,
             )
-            return result.text
+            return strip_diagnosis(result.text)
         except Exception:
-            return str(last.get("content") or "Не удалось собрать ответ.")
+            return strip_diagnosis(str(last.get("content") or "Не удалось собрать отчёт."))
 
     def _route(self, state: AgentState) -> str:
         nxt = state.get("next_agent") or "FINISH"

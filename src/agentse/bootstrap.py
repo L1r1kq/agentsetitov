@@ -5,6 +5,7 @@ from pathlib import Path
 from agentse.config import Settings, get_settings
 
 IDENTITY_FILES = (
+    "PURPOSE.md",
     "SOUL.md",
     "IDENTITY.md",
     "AGENTS.md",

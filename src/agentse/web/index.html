@@ -3,20 +3,21 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Agentse</title>
+  <title>Agentse MedInfo</title>
   <style>
-    :root { color-scheme: dark; --bg:#0f1210; --card:#171c18; --ink:#e8efe6; --mut:#93a394; --acc:#8fbf7a; --warn:#d4a657; }
+    :root { color-scheme: dark; --bg:#101218; --card:#171b24; --ink:#e8edf4; --mut:#93a0b4; --acc:#7eb0c8; --warn:#d4a657; --bad:#c47a7a; }
     * { box-sizing: border-box; }
     body { margin:0; font: 15px/1.45 ui-sans-serif, system-ui; background: var(--bg); color: var(--ink); }
     header { padding: 20px 24px 8px; }
-    h1 { margin:0; font-size: 22px; letter-spacing: .02em; }
+    h1 { margin:0; font-size: 22px; }
     p.lead { color: var(--mut); margin: 6px 0 0; }
+    .note { margin: 12px 24px 0; padding: 10px 12px; border:1px solid #4a3030; background:#221818; color:#e6cfcf; border-radius:10px; font-size:13px; }
     main { display:grid; grid-template-columns: 1.2fr .8fr; gap:16px; padding:16px 24px 32px; }
-    section { background: var(--card); border:1px solid #2a332b; border-radius:14px; padding:16px; min-height: 240px; }
-    textarea { width:100%; min-height: 110px; background:#101410; color:var(--ink); border:1px solid #2f3a31; border-radius:10px; padding:10px; }
-    button { background: var(--acc); color:#10210d; border:0; border-radius:10px; padding:10px 14px; font-weight:700; cursor:pointer; }
+    section { background: var(--card); border:1px solid #2a3140; border-radius:14px; padding:16px; min-height: 240px; }
+    textarea { width:100%; min-height: 130px; background:#10141c; color:var(--ink); border:1px solid #2f3848; border-radius:10px; padding:10px; }
+    button { background: var(--acc); color:#102028; border:0; border-radius:10px; padding:10px 14px; font-weight:700; cursor:pointer; }
     button:disabled { opacity:.5; }
-    pre { white-space: pre-wrap; background:#101410; padding:10px; border-radius:10px; overflow:auto; }
+    pre { white-space: pre-wrap; background:#10141c; padding:10px; border-radius:10px; overflow:auto; }
     .mut { color: var(--mut); }
     .route { color: var(--warn); }
     @media (max-width: 880px) { main { grid-template-columns: 1fr; } }
@@ -24,20 +25,21 @@
 </head>
 <body>
   <header>
-    <h1>Agentse</h1>
-    <p class="lead">Локальный оркестратор: planner → researcher → builder → critic → curator</p>
+    <h1>🏥 Agentse MedInfo</h1>
+    <p class="lead">Симптомы → структура → локальный справочник → отчёт. Без постановки диагноза.</p>
   </header>
+  <p class="note">Это не врач и не телемедицина. Система сопоставляет текст с карточками в knowledge/. При боли в груди, одышке, крови, потере сознания — сначала неотложка (103 / 112), не этот чат.</p>
   <main>
     <section>
       <form id="f">
-        <textarea id="task" placeholder="Задача для команды агентов">Почему обычный RAG плох как единственная память агента и что мы используем вместо него?</textarea>
-        <p><button id="go" type="submit">Запустить</button></p>
+        <textarea id="task" placeholder="Опишите жалобу своими словами: что беспокоит, как давно, чего нет.">Температура 38.2 три дня и сухой кашель, одышки нет, грудь не болит. Что это может значить справочно?</textarea>
+        <p><button id="go" type="submit">Собрать справку</button></p>
       </form>
-      <div class="mut">Ответ</div>
-      <pre id="answer">ожидание задачи…</pre>
+      <div class="mut">Справочный отчёт</div>
+      <pre id="answer">ожидание жалобы…</pre>
     </section>
     <section>
-      <div class="mut">Маршрут / критика / память</div>
+      <div class="mut">Маршрут / критика</div>
       <pre id="meta" class="route"></pre>
     </section>
   </main>
@@ -47,7 +49,7 @@
       e.preventDefault();
       const btn = document.getElementById('go');
       btn.disabled = true;
-      document.getElementById('answer').textContent = 'агенты работают…';
+      document.getElementById('answer').textContent = 'разбираем жалобу и карточки…';
       try {
         const res = await fetch('/api/chat', {
           method: 'POST',

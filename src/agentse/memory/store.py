@@ -158,12 +158,54 @@ class HierarchicalMemory:
 
     def search(self, query: str, limit: int = 6) -> list[MemoryHit]:
         hits: list[MemoryHit] = []
+        hits.extend(self.search_knowledge(query, limit=limit))
         hits.extend(self._search_identity(query))
         hits.extend(self._search_episodic(query, limit=limit))
         hits.extend(self._search_graph(query))
         hits.sort(key=lambda h: h.score, reverse=True)
         for hit in hits[:limit]:
             MEMORY_HITS.labels(layer=hit.layer).inc()
+        return hits[:limit]
+
+    def search_knowledge(self, query: str, limit: int = 6) -> list[MemoryHit]:
+        root = self.settings.workspace / "knowledge"
+        if not root.exists():
+            return []
+        q = query.lower()
+        urgent = any(
+            token in q
+            for token in (
+                "груд",
+                "одыш",
+                "кров",
+                "сознан",
+                "судорог",
+                "паралич",
+                "перекос",
+                "не дыш",
+                "103",
+                "скор",
+            )
+        )
+        hits: list[MemoryHit] = []
+        for path in sorted(root.glob("*.md")):
+            text = path.read_text(encoding="utf-8")
+            score = lexical_score(query, text) + lexical_score(query, path.stem.replace("_", " "))
+            if path.name == "RED_FLAGS.md" and urgent:
+                score += 0.8
+            if path.name == "DISCLAIMER.md":
+                score += 0.15
+            if score <= 0:
+                continue
+            hits.append(
+                MemoryHit(
+                    "knowledge",
+                    self._best_snippet(query, text, window=420),
+                    score + 0.3,
+                    {"file": f"knowledge/{path.name}"},
+                )
+            )
+        hits.sort(key=lambda h: h.score, reverse=True)
         return hits[:limit]
 
     def _search_identity(self, query: str) -> list[MemoryHit]:

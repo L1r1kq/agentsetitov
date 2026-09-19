@@ -10,6 +10,9 @@ def test_skills_exist():
         "sandbox-code",
         "memory-curation",
         "eval-design",
+        "symptom-intake",
+        "medical-reference",
+        "report-writing",
     ]
     for name in expected:
         skill = root / name / "SKILL.md"
@@ -21,6 +24,7 @@ def test_skills_exist():
 
 def test_soul_files():
     ws = Path(__file__).resolve().parents[1] / "workspace"
-    for name in ("SOUL.md", "IDENTITY.md", "AGENTS.md", "USER.md", "MEMORY.md"):
+    for name in ("SOUL.md", "IDENTITY.md", "AGENTS.md", "USER.md", "MEMORY.md", "PURPOSE.md"):
         assert (ws / name).exists()
         assert len((ws / name).read_text(encoding="utf-8")) > 200
+    assert (ws / "knowledge" / "RED_FLAGS.md").exists()

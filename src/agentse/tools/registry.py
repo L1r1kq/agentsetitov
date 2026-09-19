@@ -18,6 +18,7 @@ class ToolRegistry:
         self.settings = settings or get_settings()
         self.memory = memory or HierarchicalMemory(self.settings)
         self.fns: dict[str, Callable[..., Any]] = {
+            "knowledge_search": self.knowledge_search,
             "memory_search": self.memory_search,
             "memory_write": self.memory_write,
             "memory_get": self.memory_get,
@@ -40,6 +41,10 @@ class ToolRegistry:
         except Exception:
             TOOL_CALLS.labels(tool=tool, status="error").inc()
             raise
+
+    def knowledge_search(self, query: str, limit: int = 6) -> list[dict[str, Any]]:
+        hits = self.memory.search_knowledge(query, limit=limit)
+        return [{"layer": h.layer, "text": h.text, "score": round(h.score, 4), "meta": h.meta} for h in hits]
 
     def memory_search(self, query: str, limit: int = 6) -> list[dict[str, Any]]:
         hits = self.memory.search(query, limit=limit)
@@ -137,6 +142,7 @@ class ToolRegistry:
 
     def catalog(self) -> list[dict[str, str]]:
         return [
+            {"name": "knowledge_search", "args": "query, limit?", "why": "поиск по локальным медкарточкам knowledge/"},
             {"name": "memory_search", "args": "query, limit?", "why": "гибридный поиск по слоям памяти"},
             {"name": "memory_write", "args": "fact, session_id?, kind?", "why": "записать факт/эпизод"},
             {"name": "memory_get", "args": "path", "why": "прочитать workspace markdown"},
