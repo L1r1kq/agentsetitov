@@ -1,0 +1,136 @@
+name: agentse
+
+networks:
+  llm:
+  sandbox:
+    internal: true
+  obs:
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    networks: [llm]
+    volumes:
+      - ollama:/root/.ollama
+    ports:
+      - "11434:11434"
+    profiles: ["core", "full"]
+
+  sandbox:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.sandbox
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    pids_limit: 64
+    mem_limit: 256m
+    cpus: 0.5
+    networks: [sandbox]
+    ports:
+      - "8090:8090"
+    profiles: ["core", "full"]
+
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+      AGENTSE_SANDBOX_URL: http://sandbox:8090
+      AGENTSE_MODEL: gemma2:2b
+      AGENTSE_WORKSPACE: /app/workspace
+      AGENTSE_DATA_DIR: /app/data
+    volumes:
+      - ../workspace:/app/workspace
+      - appdata:/app/data
+    ports:
+      - "8080:8080"
+      - "9108:9108"
+    depends_on:
+      - sandbox
+    networks: [llm, sandbox, obs]
+    profiles: ["core", "full"]
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+    ports:
+      - "9090:9090"
+    networks: [obs]
+    profiles: ["obs", "full"]
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "9093:9093"
+    networks: [obs]
+    profiles: ["obs", "full"]
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: agentse
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3001:3000"
+    networks: [obs]
+    profiles: ["obs", "full"]
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./otel/tempo.yml:/etc/tempo.yaml:ro
+    ports:
+      - "3200:3200"
+    networks: [obs]
+    profiles: ["obs", "full"]
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.114.0
+    volumes:
+      - ./otel/otel-collector.yml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "4318:4318"
+    networks: [obs]
+    profiles: ["obs", "full"]
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: langfuse
+      POSTGRES_PASSWORD: langfuse
+      POSTGRES_DB: langfuse
+    volumes:
+      - pg:/var/lib/postgresql/data
+    networks: [obs]
+    profiles: ["langfuse", "full"]
+
+  langfuse:
+    image: langfuse/langfuse:2
+    environment:
+      DATABASE_URL: postgresql://langfuse:langfuse@postgres:5432/langfuse
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: agentse-dev-secret
+      SALT: agentse-dev-salt
+    ports:
+      - "3000:3000"
+    depends_on: [postgres]
+    networks: [obs]
+    profiles: ["langfuse", "full"]
+
+volumes:
+  ollama:
+  appdata:
+  pg:

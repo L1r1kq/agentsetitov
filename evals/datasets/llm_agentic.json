@@ -1,0 +1,4 @@
+{
+  "note": "Канонические кейсы живут в src/agentse/evals/datasets.py. Этот файл — копия для внешних раннеров.",
+  "source": "agentse.evals.datasets.LLM_CASES"
+}

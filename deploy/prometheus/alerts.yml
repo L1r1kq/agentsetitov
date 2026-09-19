@@ -1,0 +1,42 @@
+groups:
+  - name: agentse
+    rules:
+      - alert: AgentseHighLoopRate
+        expr: increase(agentse_loop_guard_total[15m]) > 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Агенты упираются в max_steps
+          description: Специфика агентного мониторинга — петли, не только latency.
+
+      - alert: AgentseTaskErrors
+        expr: increase(agentse_tasks_total{status="error"}[10m]) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Растут ошибки задач
+
+      - alert: AgentseEvalDrop
+        expr: agentse_eval_score{suite="agent", metric="task_success_rate"} < 0.5
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: TSR агентной системы ниже порога
+
+      - alert: AgentseLLMErrors
+        expr: increase(agentse_llm_requests_total{status="error"}[10m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Ollama/LLM деградирует
+
+      - alert: AgentseSandboxDenies
+        expr: increase(agentse_sandbox_denies_total[30m]) > 10
+        labels:
+          severity: info
+        annotations:
+          summary: Много отказов песочницы — либо атака, либо плохой builder

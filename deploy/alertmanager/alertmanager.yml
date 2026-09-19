@@ -1,0 +1,12 @@
+route:
+  receiver: local-log
+  group_by: [alertname]
+  group_wait: 20s
+  group_interval: 5m
+  repeat_interval: 4h
+
+receivers:
+  - name: local-log
+    webhook_configs:
+      - url: http://app:8080/health
+        send_resolved: true

@@ -1,0 +1,83 @@
+{
+  "ts": "2026-09-19T17:18:43.784519+00:00",
+  "model": "gemma2:2b",
+  "summary": {
+    "task_success_rate": 0.6666666666666666,
+    "handoff_accuracy": 1.0,
+    "avg_critic_score": 0.8,
+    "loop_rate": 0.0,
+    "tool_error_rate": 0.0,
+    "avg_steps": 6
+  },
+  "cases": [
+    {
+      "id": "calc_area",
+      "task_success": 1.0,
+      "handoff_accuracy": 1.0,
+      "critic_score": 0.8,
+      "steps": 6,
+      "looped": 0.0,
+      "tool_fail": 0.0,
+      "route": [
+        "START",
+        "planner",
+        "researcher",
+        "builder",
+        "critic",
+        "curator",
+        "FINISH"
+      ],
+      "answer": "28",
+      "started": "2026-09-19T17:10:55.202249+00:00"
+    },
+    {
+      "id": "memory_why_not_rag",
+      "task_success": 0.0,
+      "handoff_accuracy": 1.0,
+      "critic_score": 0.8,
+      "steps": 6,
+      "looped": 0.0,
+      "tool_fail": 0.0,
+      "route": [
+        "START",
+        "planner",
+        "researcher",
+        "builder",
+        "critic",
+        "curator",
+        "FINISH"
+      ],
+      "answer": "В Agentse память не сводится к RAG, потому что **RAG — это упрощённая модель, которая не учитывает сложные аспекты памяти, такие как контекст и долгосрочные связи.**  \n\n**Пример:** RAG может не учитывать, что предыдущие взаимодействия влияют на текущее поведение.",
+      "started": "2026-09-19T17:12:10.659330+00:00"
+    },
+    {
+      "id": "identity_name",
+      "task_success": 1.0,
+      "handoff_accuracy": 1.0,
+      "critic_score": 0.8,
+      "steps": 6,
+      "looped": 0.0,
+      "tool_fail": 0.0,
+      "route": [
+        "START",
+        "planner",
+        "researcher",
+        "builder",
+        "critic",
+        "curator",
+        "FINISH"
+      ],
+      "answer": "Система - Agentse. Команда - мультиагентная бригада.",
+      "started": "2026-09-19T17:16:24.810226+00:00"
+    }
+  ],
+  "how_to_monitor": {
+    "nightly": "agentse eval-agent && agentse eval-llm",
+    "prometheus": [
+      "agentse_eval_score",
+      "agentse_task_latency_seconds",
+      "agentse_loop_guard_total"
+    ],
+    "alert": "TSR drop > 20% vs 7d baseline or loop_rate > 0.15"
+  }
+}

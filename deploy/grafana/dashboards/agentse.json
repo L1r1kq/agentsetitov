@@ -1,0 +1,32 @@
+{
+  "annotations": { "list": [] },
+  "title": "Agentse",
+  "schemaVersion": 39,
+  "version": 1,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Tasks ok",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "targets": [{ "expr": "sum(agentse_tasks_total{status=\"ok\"})" }]
+    },
+    {
+      "type": "stat",
+      "title": "Loop guards",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "targets": [{ "expr": "sum(agentse_loop_guard_total)" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "LLM latency",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "targets": [{ "expr": "rate(agentse_llm_latency_seconds_sum[5m]) / rate(agentse_llm_latency_seconds_count[5m])" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Handoffs",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "targets": [{ "expr": "sum by (src,dst) (increase(agentse_handoffs_total[5m]))" }]
+    }
+  ]
+}

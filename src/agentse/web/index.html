@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agentse</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0f1210; --card:#171c18; --ink:#e8efe6; --mut:#93a394; --acc:#8fbf7a; --warn:#d4a657; }
+    * { box-sizing: border-box; }
+    body { margin:0; font: 15px/1.45 ui-sans-serif, system-ui; background: var(--bg); color: var(--ink); }
+    header { padding: 20px 24px 8px; }
+    h1 { margin:0; font-size: 22px; letter-spacing: .02em; }
+    p.lead { color: var(--mut); margin: 6px 0 0; }
+    main { display:grid; grid-template-columns: 1.2fr .8fr; gap:16px; padding:16px 24px 32px; }
+    section { background: var(--card); border:1px solid #2a332b; border-radius:14px; padding:16px; min-height: 240px; }
+    textarea { width:100%; min-height: 110px; background:#101410; color:var(--ink); border:1px solid #2f3a31; border-radius:10px; padding:10px; }
+    button { background: var(--acc); color:#10210d; border:0; border-radius:10px; padding:10px 14px; font-weight:700; cursor:pointer; }
+    button:disabled { opacity:.5; }
+    pre { white-space: pre-wrap; background:#101410; padding:10px; border-radius:10px; overflow:auto; }
+    .mut { color: var(--mut); }
+    .route { color: var(--warn); }
+    @media (max-width: 880px) { main { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Agentse</h1>
+    <p class="lead">Локальный оркестратор: planner → researcher → builder → critic → curator</p>
+  </header>
+  <main>
+    <section>
+      <form id="f">
+        <textarea id="task" placeholder="Задача для команды агентов">Почему обычный RAG плох как единственная память агента и что мы используем вместо него?</textarea>
+        <p><button id="go" type="submit">Запустить</button></p>
+      </form>
+      <div class="mut">Ответ</div>
+      <pre id="answer">ожидание задачи…</pre>
+    </section>
+    <section>
+      <div class="mut">Маршрут / критика / память</div>
+      <pre id="meta" class="route"></pre>
+    </section>
+  </main>
+  <script>
+    const f = document.getElementById('f');
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('go');
+      btn.disabled = true;
+      document.getElementById('answer').textContent = 'агенты работают…';
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({task: document.getElementById('task').value})
+        });
+        const data = await res.json();
+        document.getElementById('answer').textContent = data.answer || JSON.stringify(data);
+        document.getElementById('meta').textContent =
+          'маршрут: ' + (data.route || []).join(' → ') +
+          '\nплан: ' + JSON.stringify(data.plan, null, 2) +
+          '\nкритик: ' + JSON.stringify(data.critique, null, 2) +
+          '\nsession: ' + data.session_id;
+      } catch (err) {
+        document.getElementById('answer').textContent = String(err);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
