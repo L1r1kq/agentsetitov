@@ -1,0 +1,40 @@
+# HELP python_gc_objects_collected_total Objects collected during gc
+# TYPE python_gc_objects_collected_total counter
+python_gc_objects_collected_total{generation="0"} 916.0
+python_gc_objects_collected_total{generation="1"} 140.0
+python_gc_objects_collected_total{generation="2"} 0.0
+# HELP python_gc_objects_uncollectable_total Uncollectable objects found during GC
+# TYPE python_gc_objects_uncollectable_total counter
+python_gc_objects_uncollectable_total{generation="0"} 0.0
+python_gc_objects_uncollectable_total{generation="1"} 0.0
+python_gc_objects_uncollectable_total{generation="2"} 0.0
+# HELP python_gc_collections_total Number of times this generation was collected
+# TYPE python_gc_collections_total counter
+python_gc_collections_total{generation="0"} 99.0
+python_gc_collections_total{generation="1"} 9.0
+python_gc_collections_total{generation="2"} 0.0
+# HELP python_info Python platform information
+# TYPE python_info gauge
+python_info{implementation="CPython",major="3",minor="13",patchlevel="2",version="3.13.2"} 1.0
+# HELP agentse_agent_steps_total Шаги агентов
+# TYPE agentse_agent_steps_total counter
+agentse_agent_steps_total{agent="supervisor"} 7.0
+agentse_agent_steps_total{agent="planner"} 1.0
+agentse_agent_steps_total{agent="researcher"} 1.0
+agentse_agent_steps_total{agent="builder"} 1.0
+agentse_agent_steps_total{agent="critic"} 2.0
+agentse_agent_steps_total{agent="curator"} 1.0
+# HELP agentse_agent_steps_created Шаги агентов
+# TYPE agentse_agent_steps_created gauge
+agentse_agent_steps_created{agent="supervisor"} 1.789840512953891e+09
+agentse_agent_steps_created{agent="planner"} 1.7898405205040362e+09
+agentse_agent_steps_created{agent="researcher"} 1.789840537104275e+09
+agentse_agent_steps_created{agent="builder"} 1.7898405778052108e+09
+agentse_agent_steps_created{agent="critic"} 1.789840590042573e+09
+agentse_agent_steps_created{agent="curator"} 1.7898406003919418e+09
+# HELP agentse_handoffs_total Handoff между агентами
+# TYPE agentse_handoffs_total counter
+agentse_handoffs_total{dst="planner",src="START"} 1.0
+agentse_handoffs_total{dst="researcher",src="planner"} 1.0
+agentse_handoffs_total{dst="builder",src="researcher"} 1.0
+agentse_handoffs_total{dst="critic",src="builder"} 1.0
