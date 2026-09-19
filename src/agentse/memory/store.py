@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from agentse.config import Settings, get_settings
+from agentse.medical_guard import has_red_flag
 from agentse.observability.metrics import MEMORY_HITS, MEMORY_WRITES
 
 TOKEN_RE = re.compile(r"[a-zA-Zа-яА-ЯёЁ0-9_]{2,}")
@@ -171,30 +172,19 @@ class HierarchicalMemory:
         root = self.settings.workspace / "knowledge"
         if not root.exists():
             return []
-        q = query.lower()
-        urgent = any(
-            token in q
-            for token in (
-                "груд",
-                "одыш",
-                "кров",
-                "сознан",
-                "судорог",
-                "паралич",
-                "перекос",
-                "не дыш",
-                "103",
-                "скор",
-            )
-        )
+        urgent = has_red_flag(query)
         hits: list[MemoryHit] = []
         for path in sorted(root.glob("*.md")):
             text = path.read_text(encoding="utf-8")
             score = lexical_score(query, text) + lexical_score(query, path.stem.replace("_", " "))
             if path.name == "RED_FLAGS.md" and urgent:
                 score += 0.8
+            if path.name == "RED_FLAGS.md" and not urgent:
+                score -= 0.2
+            if path.stem in {"fever_cough", "headache", "sore_throat", "abdominal", "chest_pain"}:
+                score += lexical_score(query, path.stem.replace("_", " ")) * 2
             if path.name == "DISCLAIMER.md":
-                score += 0.15
+                score += 0.1
             if score <= 0:
                 continue
             hits.append(

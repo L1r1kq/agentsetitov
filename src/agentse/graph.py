@@ -10,6 +10,7 @@ from langgraph.graph import END, START, StateGraph
 from agentse.agents.policy import merge_route
 from agentse.config import Settings, get_settings
 from agentse.medical_guard import critique_report, is_health_fact, strip_diagnosis
+from agentse.report import compose_reference_report, is_blank_answer
 from agentse.llm import LLMResult, OllamaClient, parse_json_object
 from agentse.observability.metrics import (
     AGENT_HANDOFFS,
@@ -116,13 +117,19 @@ class AgentRuntime:
     def builder(self, state: AgentState) -> dict[str, Any]:
         AGENT_STEPS.labels(agent="builder").inc()
         self.tools.call("skill_load", name="report-writing")
+        hits = self.tools.call("knowledge_search", query=state["task"], limit=5)
+        fallback = compose_reference_report(state["task"], list(state.get("findings") or []), hits)
         result = self._ask(
             BUILDER_PROMPT,
             f"Жалоба: {state['task']}\nПлан: {state.get('plan')}\nКарточки: {state.get('findings')}\n"
-            f"Замечания критика: {state.get('critique')}",
+            f"Замечания критика: {state.get('critique')}\n"
+            f"Если не уверен — верни этот черновик как content:\n{fallback[:1800]}",
+            fmt_json=True,
         )
         data = self._safe_json(result)
         content = str(data.get("content") or result.text)
+        if is_blank_answer(content):
+            content = fallback
         artifact = {
             "artifact_type": data.get("artifact_type") or "text",
             "content": content,
@@ -201,17 +208,27 @@ class AgentRuntime:
         final = self._finalize(state, last)
         return {"final_answer": final}
 
+    def _grounded_report(self, state: AgentState, last: dict[str, Any]) -> str:
+        hits = self.tools.call("knowledge_search", query=state.get("task") or "", limit=5)
+        artifact = str(last.get("content") or "")
+        if not is_blank_answer(artifact):
+            return strip_diagnosis(artifact)
+        return compose_reference_report(state.get("task") or "", list(state.get("findings") or []), hits)
+
     def _finalize(self, state: AgentState, last: dict[str, Any]) -> str:
+        grounded = self._grounded_report(state, last)
         try:
             result = self._ask(
                 FINALIZER_PROMPT,
-                f"Задача: {state['task']}\nАртефакт: {last.get('content', '')[:2000]}\n"
-                f"Критика: {state.get('critique')}",
+                f"Жалоба: {state['task']}\nЧерновик (верни его почти дословно, можно чуть сжать):\n{grounded[:2500]}\n"
+                f"Критика: {state.get('critique')}\nНе отвечай пустым JSON.",
                 fmt_json=False,
             )
+            if is_blank_answer(result.text):
+                return grounded
             return strip_diagnosis(result.text)
         except Exception:
-            return strip_diagnosis(str(last.get("content") or "Не удалось собрать отчёт."))
+            return grounded
 
     def _route(self, state: AgentState) -> str:
         nxt = state.get("next_agent") or "FINISH"
@@ -274,9 +291,9 @@ class AgentRuntime:
                 raise
             finally:
                 TASK_LATENCY.observe(time.perf_counter() - started)
-        if not result.get("final_answer"):
+        if is_blank_answer(result.get("final_answer")):
             last = (result.get("artifacts") or [{}])[-1]
-            result["final_answer"] = last.get("content") or "Задача не завершена за лимит шагов."
+            result["final_answer"] = self._grounded_report(result, last)
         self.tools.memory.write_episodic(session_id, "answer", result["final_answer"][:1000])
         self.tools.memory.decay()
         return result

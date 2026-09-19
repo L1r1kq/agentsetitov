@@ -57,7 +57,9 @@
           body: JSON.stringify({task: document.getElementById('task').value})
         });
         const data = await res.json();
-        document.getElementById('answer').textContent = data.answer || JSON.stringify(data);
+        const answer = (data.answer || "").trim();
+        document.getElementById('answer').textContent =
+          (answer && answer !== "{}") ? answer : "Отчёт не собрался. Нажмите ещё раз или смотрите маршрут справа.";
         document.getElementById('meta').textContent =
           'маршрут: ' + (data.route || []).join(' → ') +
           '\nплан: ' + JSON.stringify(data.plan, null, 2) +
